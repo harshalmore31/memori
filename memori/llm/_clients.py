@@ -407,7 +407,7 @@ def _detect_platform(client):
     return None
 
 
-@Registry.register_client(lambda client: type(client).__module__ == "openai")
+@Registry.register_client(lambda client: type(client).__module__.startswith("openai"))
 class OpenAi(BaseClient):
     def register(self, client, _provider=None, stream=False):
         if not hasattr(client, "chat"):
