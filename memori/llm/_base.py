@@ -8,8 +8,8 @@ r"""
                        memorilabs.ai
 """
 
-import asyncio
 import copy
+import inspect
 import json
 from typing import TYPE_CHECKING
 
@@ -76,10 +76,18 @@ class BaseClient:
 
         original = getattr(backup_obj, backup_attr)
 
-        try:
-            asyncio.get_running_loop()
+        # Detect async by checking:
+        # 1. If the original method is a coroutine function (works for some SDKs)
+        # 2. If the object class name starts with "Async" (e.g., AsyncCompletions, AsyncMessages)
+        # This is more reliable than checking asyncio.get_running_loop() which
+        # only reflects the context at registration time, not call time
+        is_async = inspect.iscoroutinefunction(original) or type(
+            obj
+        ).__name__.startswith("Async")
+
+        if is_async:
             wrapper_class = InvokeAsyncStream if stream else InvokeAsync
-        except RuntimeError:
+        else:
             wrapper_class = InvokeStream if stream else Invoke
 
         setattr(
@@ -113,16 +121,50 @@ class BaseInvoke:
 
         return kwargs
 
-    def _convert_to_json(self, obj):
-        """Recursively convert objects to JSON-serializable format."""
-        if isinstance(obj, list):
-            return [self._convert_to_json(item) for item in obj]
-        elif isinstance(obj, dict):
-            return {key: self._convert_to_json(value) for key, value in obj.items()}
-        elif hasattr(obj, "__dict__"):
-            return self._convert_to_json(obj.__dict__)
-        else:
+    def _convert_to_json(self, obj, _seen=None):
+        """Recursively convert objects to JSON-serializable format.
+
+        Uses a seen set to prevent infinite recursion from circular references.
+        """
+        if _seen is None:
+            _seen = set()
+
+        # Check for circular references using object id
+        obj_id = id(obj)
+        if obj_id in _seen:
+            return None  # Break circular reference
+        _seen.add(obj_id)
+
+        try:
+            if obj is None or isinstance(obj, (bool, int, float, str)):
+                return obj
+            elif isinstance(obj, list):
+                return [self._convert_to_json(item, _seen.copy()) for item in obj]
+            elif isinstance(obj, dict):
+                return {
+                    key: self._convert_to_json(value, _seen.copy())
+                    for key, value in obj.items()
+                    if not key.startswith("_")  # Skip private/internal attributes
+                }
+            elif hasattr(obj, "model_dump"):
+                # Pydantic models - use built-in serialization
+                try:
+                    return obj.model_dump()
+                except Exception:
+                    pass
+            elif hasattr(obj, "__dict__"):
+                # Filter out private attributes and httpx/async internals
+                filtered_dict = {
+                    k: v
+                    for k, v in obj.__dict__.items()
+                    if not k.startswith("_") and not callable(v)
+                }
+                if filtered_dict:
+                    return self._convert_to_json(filtered_dict, _seen.copy())
+                return None
             return obj
+        except Exception:
+            return None
 
     def dict_to_json(self, dict_: dict) -> dict:
         return self._convert_to_json(dict_)
@@ -199,8 +241,57 @@ class BaseInvoke:
 
         return payload
 
+    def _safe_copy(self, obj):
+        """Safely copy an object, handling unpicklable types like _thread.RLock.
+
+        Falls back to alternative copy methods if deepcopy fails.
+        """
+        # Try deepcopy first (works for most cases)
+        try:
+            return copy.deepcopy(obj)
+        except (TypeError, AttributeError):
+            pass
+
+        # For lists, try to copy each item individually
+        if isinstance(obj, list):
+            result = []
+            for item in obj:
+                result.append(self._safe_copy(item))
+            return result
+
+        # For dicts, try to copy each value
+        if isinstance(obj, dict):
+            result = {}
+            for key, value in obj.items():
+                result[key] = self._safe_copy(value)
+            return result
+
+        # For Pydantic models, use model_dump()
+        if hasattr(obj, "model_dump"):
+            try:
+                return obj.model_dump()
+            except Exception:
+                pass
+
+        # For objects with to_dict() method
+        if hasattr(obj, "to_dict"):
+            try:
+                return obj.to_dict()
+            except Exception:
+                pass
+
+        # For objects with __dict__, try shallow copy of attributes
+        if hasattr(obj, "__dict__"):
+            try:
+                return copy.copy(obj)
+            except Exception:
+                pass
+
+        # Last resort: return as-is (primitives, or unpicklable objects)
+        return obj
+
     def _format_response(self, raw_response):
-        formatted_response = copy.deepcopy(raw_response)
+        formatted_response = self._safe_copy(raw_response)
         if self._uses_protobuf:
             if not isinstance(formatted_response, list):
                 if (
