@@ -9,8 +9,10 @@ r"""
 """
 
 import asyncio
+import logging
 import os
 import struct
+import threading
 from collections.abc import Iterable
 from typing import Any
 
@@ -18,13 +20,27 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from sentence_transformers import SentenceTransformer
 
+logger = logging.getLogger(__name__)
+
 _MODEL_CACHE: dict[str, SentenceTransformer] = {}
+_MODEL_CACHE_LOCK = threading.Lock()
+_MODEL_ENCODE_LOCKS: dict[str, threading.Lock] = {}
 
 
 def _get_model(model_name: str) -> SentenceTransformer:
-    if model_name not in _MODEL_CACHE:
-        _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
-    return _MODEL_CACHE[model_name]
+    with _MODEL_CACHE_LOCK:
+        if model_name not in _MODEL_CACHE:
+            _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
+        return _MODEL_CACHE[model_name]
+
+
+def _get_encode_lock(model_name: str) -> threading.Lock:
+    with _MODEL_CACHE_LOCK:
+        lock = _MODEL_ENCODE_LOCKS.get(model_name)
+        if lock is None:
+            lock = threading.Lock()
+            _MODEL_ENCODE_LOCKS[model_name] = lock
+        return lock
 
 
 def _prepare_text_inputs(texts: str | Iterable[str]) -> list[str]:
@@ -65,16 +81,30 @@ def embed_texts(
 ) -> list[list[float]]:
     inputs = _prepare_text_inputs(texts)
     if not inputs:
+        logger.debug("embed_texts called with empty input")
         return []
+
+    logger.debug(
+        "Generating embedding using model: %s for %d text(s)", model, len(inputs)
+    )
 
     try:
         encoder = _get_model(model)
     except (OSError, RuntimeError, ValueError):
+        logger.debug("Failed to load model %s, returning zero embeddings", model)
         return _zero_vectors(len(inputs), fallback_dimension)
 
     try:
-        embeddings = encoder.encode(inputs, convert_to_numpy=True)
-        return embeddings.tolist()
+        with _get_encode_lock(model):
+            embeddings = encoder.encode(inputs, convert_to_numpy=True)
+        result = embeddings.tolist()
+        if result:
+            logger.debug(
+                "Embedding generated - dimension: %d, count: %d",
+                len(result[0]),
+                len(result),
+            )
+        return result
     except ValueError as e:
         # Some models can raise "all input arrays must have the same shape" when
         # encoding batches. Retry one-by-one to avoid internal stacking.
@@ -83,20 +113,37 @@ def embed_texts(
 
         try:
             vectors: list[list[float]] = []
-            for text in inputs:
-                single = encoder.encode([text], convert_to_numpy=True)
-                vectors.append(single[0].tolist())
+            with _get_encode_lock(model):
+                for text in inputs:
+                    single = encoder.encode([text], convert_to_numpy=True)
+                    vectors.append(single[0].tolist())
 
             dim_set = {len(v) for v in vectors}
             if len(dim_set) != 1:
                 raise ValueError("all input arrays must have the same shape") from e
 
+            if vectors:
+                logger.debug(
+                    "Embedding generated (one-by-one) - dimension: %d, count: %d",
+                    len(vectors[0]),
+                    len(vectors),
+                )
             return vectors
         except Exception:
             dim = _embedding_dimension(encoder, default=fallback_dimension)
+            logger.warning(
+                "Embedding encode failed for model=%s, returning zero embeddings of dim %d",
+                model,
+                dim,
+            )
             return _zero_vectors(len(inputs), dim)
     except RuntimeError:
         dim = _embedding_dimension(encoder, default=fallback_dimension)
+        logger.warning(
+            "Embedding encode failed for model=%s, returning zero embeddings of dim %d",
+            model,
+            dim,
+        )
         return _zero_vectors(len(inputs), dim)
 
 

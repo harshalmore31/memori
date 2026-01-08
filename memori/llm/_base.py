@@ -11,11 +11,13 @@ r"""
 import copy
 import inspect
 import json
+import logging
 from typing import TYPE_CHECKING
 
 from google.protobuf import json_format
 
 from memori._config import Config
+from memori._logging import truncate
 from memori._utils import merge_chunk
 
 if TYPE_CHECKING:
@@ -32,6 +34,8 @@ from memori.llm._utils import (
     llm_is_xai,
     provider_is_langchain,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class BaseClient:
@@ -298,9 +302,34 @@ class BaseInvoke:
                     hasattr(formatted_response, "__dict__")
                     and "_pb" in formatted_response.__dict__
                 ):
+                    # Old google-generativeai format (protobuf)
                     formatted_response = json.loads(
                         json_format.MessageToJson(formatted_response.__dict__["_pb"])
                     )
+                elif hasattr(formatted_response, "candidates"):
+                    # New google-genai format (dict with candidates)
+                    result = {}
+                    if formatted_response.candidates:
+                        candidates = []
+                        for candidate in formatted_response.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        result["candidates"] = candidates
+                    formatted_response = result
                 else:
                     formatted_response = {}
 
@@ -510,11 +539,14 @@ class BaseInvoke:
         if not user_query:
             return kwargs
 
+        logger.debug("User query: %s", truncate(user_query))
+
         from memori.memory.recall import Recall
 
         facts = Recall(self.config).search_facts(user_query, entity_id=entity_id)
 
         if not facts:
+            logger.debug("No facts found to inject into prompt")
             return kwargs
 
         relevant_facts = [
@@ -524,8 +556,13 @@ class BaseInvoke:
         ]
 
         if not relevant_facts:
+            logger.debug(
+                "No facts above relevance threshold (%.2f)",
+                self.config.recall_relevance_threshold,
+            )
             return kwargs
 
+        logger.debug("Injecting %d recalled facts into prompt", len(relevant_facts))
         fact_lines = [f"- {fact['content']}" for fact in relevant_facts]
         recall_context = (
             "\n\n<memori_context>\n"
@@ -571,6 +608,7 @@ class BaseInvoke:
             return kwargs
 
         self._injected_message_count = len(messages)
+        logger.debug("Injecting %d conversation messages from history", len(messages))
 
         if (
             llm_is_openai(self.config.framework.provider, self.config.llm.provider)
@@ -748,6 +786,9 @@ class BaseInvoke:
             else:
                 content = ""
 
+            if content:
+                logger.debug("Response content: %s", truncate(str(content)))
+
             messages_for_aug.append(
                 {
                     "role": "assistant",
@@ -770,6 +811,7 @@ class BaseInvoke:
                 conversation_messages=messages_for_aug,
                 system_prompt=system_prompt,
             )
+            logger.debug("Kicking off AA - enqueueing augmentation")
             self.config.augmentation.enqueue(augmentation_input)
 
 
@@ -794,11 +836,39 @@ class BaseIterator:
             formatted_chunk = copy.deepcopy(chunk)
             if isinstance(self.raw_response, list):
                 if "_pb" in formatted_chunk.__dict__:
+                    # Old google-generativeai format (protobuf)
                     self.raw_response.append(
                         json.loads(
                             json_format.MessageToJson(formatted_chunk.__dict__["_pb"])
                         )
                     )
+                elif "candidates" in formatted_chunk.__dict__:
+                    # New google-genai format (dict with candidates)
+                    chunk_data = {}
+                    if (
+                        hasattr(formatted_chunk, "candidates")
+                        and formatted_chunk.candidates
+                    ):
+                        candidates = []
+                        for candidate in formatted_chunk.candidates:
+                            candidate_data = {}
+                            if hasattr(candidate, "content") and candidate.content:
+                                content_data = {}
+                                if (
+                                    hasattr(candidate.content, "parts")
+                                    and candidate.content.parts
+                                ):
+                                    parts = []
+                                    for part in candidate.content.parts:
+                                        if hasattr(part, "text"):
+                                            parts.append({"text": part.text})
+                                    content_data["parts"] = parts
+                                if hasattr(candidate.content, "role"):
+                                    content_data["role"] = candidate.content.role
+                                candidate_data["content"] = content_data
+                            candidates.append(candidate_data)
+                        chunk_data["candidates"] = candidates
+                    self.raw_response.append(chunk_data)
         else:
             if isinstance(self.raw_response, dict):
                 self.raw_response = merge_chunk(self.raw_response, chunk.__dict__)
