@@ -82,6 +82,7 @@ class TestDataclassModels:
     def test_entity_data_structure(self):
         """Verify EntityData holds hashed ID."""
         entity = EntityData(id=hash_id("user-123"))
+        assert entity.id is not None
         assert len(entity.id) == 64
 
     def test_attribution_data_structure(self):

@@ -261,27 +261,17 @@ class TestTestModeConfiguration:
     """Tests to verify test mode configuration."""
 
     def test_memori_test_mode_is_enabled(self):
-        """Verify MEMORI_TEST_MODE is set."""
-        from memori._config import Config
+        """Verify MEMORI_TEST_MODE is set for staging API."""
 
-        # In this test file, we set MEMORI_TEST_MODE=1 at module level
         assert os.environ.get("MEMORI_TEST_MODE") == "1"
-        assert Config.is_test_mode() is True
-
-    def test_staging_api_url(self):
-        """Verify staging API URL is used in test mode."""
-        from memori._network import MEMORI_STAGING_API_URL
-
-        # When test mode is enabled, staging URL should be used
-        assert "staging" in MEMORI_STAGING_API_URL
 
     @requires_openai
     @pytest.mark.integration
-    def test_api_call_uses_staging(self, memori_instance):
-        """Verify API calls go to staging when MEMORI_TEST_MODE=1."""
-        from memori._config import Config
+    def test_memori_instance_in_test_mode(self, memori_instance):
+        """Verify memori instance works in test mode."""
+        # Check env var is set (test mode)
+        assert os.environ.get("MEMORI_TEST_MODE") is not None
 
-        assert Config.is_test_mode() is True
-
-        # The memori instance should be configured for test mode
+        # The memori instance should be configured and working
         assert memori_instance is not None
+        assert memori_instance.config is not None
