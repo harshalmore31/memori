@@ -27,11 +27,6 @@ MODEL = "gemini-2.0-flash"  # Latest fast model
 TEST_PROMPT = "Say 'hello' in one word."  # Minimal prompt
 
 
-# =============================================================================
-# Test Category 1: Client Registration
-# =============================================================================
-
-
 class TestClientRegistration:
     """Tests for verifying client wrapping/registration works correctly."""
 
@@ -91,11 +86,6 @@ class TestClientRegistration:
         assert client._memori_installed is True
 
         client.close()
-
-
-# =============================================================================
-# Test Category 2: Synchronous Content Generation
-# =============================================================================
 
 
 class TestSyncContentGeneration:
@@ -168,11 +158,6 @@ class TestSyncContentGeneration:
         assert "alice" in content
 
 
-# =============================================================================
-# Test Category 3: Asynchronous Content Generation
-# =============================================================================
-
-
 class TestAsyncContentGeneration:
     """Tests for asynchronous generate_content() calls using client.aio."""
 
@@ -227,11 +212,6 @@ class TestAsyncContentGeneration:
         assert len(response.text) > 0
 
 
-# =============================================================================
-# Test Category 4: Sync Streaming Responses
-# =============================================================================
-
-
 class TestSyncStreaming:
     """Tests for synchronous streaming responses."""
 
@@ -276,11 +256,6 @@ class TestSyncStreaming:
         for chunk in stream:
             # Each chunk should have candidates or be empty
             assert hasattr(chunk, "candidates") or hasattr(chunk, "text")
-
-
-# =============================================================================
-# Test Category 5: Async Streaming Responses
-# =============================================================================
 
 
 class TestAsyncStreaming:
@@ -358,11 +333,6 @@ class TestAsyncStreaming:
             )
 
 
-# =============================================================================
-# Test Category 6: Error Handling
-# =============================================================================
-
-
 class TestErrorHandling:
     """Tests for error handling scenarios."""
 
@@ -413,11 +383,6 @@ class TestErrorHandling:
             )
 
         client.close()
-
-
-# =============================================================================
-# Test Category 7: Response Format Validation
-# =============================================================================
 
 
 class TestResponseFormatValidation:
@@ -475,11 +440,6 @@ class TestResponseFormatValidation:
 
         # Google provides usage_metadata
         assert hasattr(response, "usage_metadata") or hasattr(response, "candidates")
-
-
-# =============================================================================
-# Test Category 8: Memori Integration Verification
-# =============================================================================
 
 
 class TestMemoriIntegration:
@@ -557,11 +517,6 @@ class TestMemoriIntegration:
         # Attribution should still be set
         assert memori_instance.config.entity_id == "user-123"
         assert memori_instance.config.process_id == "process-456"
-
-
-# =============================================================================
-# Test Category 9: Storage Verification
-# =============================================================================
 
 
 class TestStorageVerification:

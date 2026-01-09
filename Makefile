@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean
+.PHONY: help dev-up dev-down dev-shell dev-build dev-clean test lint format clean run-integrations run-aa-unit-tests run-aa-integration
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -48,6 +48,22 @@ dev-clean: ## Complete teardown: stop containers, remove images, prune build cac
 
 test: ## Run tests in the container
 	docker compose exec dev pytest
+
+run-integrations: ## Run all provider integration tests (requires API keys in .env)
+	@echo "Running integration tests with MEMORI_TEST_MODE=1 (staging)..."
+	@echo "Ensure API keys are set in environment or .env file"
+	MEMORI_TEST_MODE=1 uv run pytest tests/integration/ -v -m integration --tb=short
+
+run-aa-unit-tests: ## Run AA payload unit tests (no API keys needed)
+	@echo "Running AA payload unit tests..."
+	uv run pytest tests/memory/augmentation/test_aa_payload_unit.py -v --tb=short
+
+run-aa-integration: ## Run AA integration tests with staging API
+	@echo "Running AA integration tests against staging..."
+	MEMORI_TEST_MODE=1 uv run pytest tests/integration/test_aa_payload.py -v -m integration --tb=short
+
+run-integrations-docker: ## Run integration tests in Docker container
+	docker compose exec -e MEMORI_TEST_MODE=1 dev pytest tests/integration/ -v -m integration --tb=short
 
 run-integration: ## Run integration test scripts directly (e.g., make run-integration FILE=tests/llm/clients/oss/openai/async.py ARGS="--db mysql")
 	@echo "Running integration test: $(FILE) $(ARGS)"

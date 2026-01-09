@@ -20,11 +20,6 @@ MAX_TOKENS = 50  # Minimize token usage
 TEST_PROMPT = "Say 'hello' in one word."  # Minimal prompt
 
 
-# =============================================================================
-# Test Category 1: Client Registration
-# =============================================================================
-
-
 class TestClientRegistration:
     """Tests for verifying client wrapping/registration works correctly."""
 
@@ -88,11 +83,6 @@ class TestClientRegistration:
 
         # Anthropic uses messages.create, so original should be backed up
         assert hasattr(client, "_memori_installed")
-
-
-# =============================================================================
-# Test Category 2: Synchronous Messages
-# =============================================================================
 
 
 class TestSyncMessages:
@@ -170,11 +160,6 @@ class TestSyncMessages:
         assert "alice" in content
 
 
-# =============================================================================
-# Test Category 3: Asynchronous Messages
-# =============================================================================
-
-
 class TestAsyncMessages:
     """Tests for asynchronous messages.create() calls."""
 
@@ -235,11 +220,6 @@ class TestAsyncMessages:
         assert response.content[0].text is not None
 
 
-# =============================================================================
-# Test Category 4: Streaming Responses (Sync)
-# =============================================================================
-
-
 class TestSyncStreaming:
     """Tests for synchronous streaming responses."""
 
@@ -283,11 +263,6 @@ class TestSyncStreaming:
         # Should have at least one text chunk
         assert len(events) > 0
         assert all(isinstance(e, str) for e in events)
-
-
-# =============================================================================
-# Test Category 5: Streaming Responses (Async)
-# =============================================================================
 
 
 class TestAsyncStreaming:
@@ -374,11 +349,6 @@ class TestAsyncStreaming:
         assert hasattr(final_message.usage, "output_tokens")
 
 
-# =============================================================================
-# Test Category 6: Error Handling
-# =============================================================================
-
-
 class TestErrorHandling:
     """Tests for error handling scenarios."""
 
@@ -419,11 +389,6 @@ class TestErrorHandling:
                 messages=[{"role": "user", "content": TEST_PROMPT}],
                 max_tokens=MAX_TOKENS,
             )
-
-
-# =============================================================================
-# Test Category 7: Response Format Validation
-# =============================================================================
 
 
 class TestResponseFormatValidation:
@@ -485,11 +450,6 @@ class TestResponseFormatValidation:
         assert response.usage is not None
         assert response.usage.input_tokens > 0
         assert response.usage.output_tokens > 0
-
-
-# =============================================================================
-# Test Category 8: Memori Integration Verification
-# =============================================================================
 
 
 class TestMemoriIntegration:
@@ -563,11 +523,6 @@ class TestMemoriIntegration:
         # Attribution should still be set
         assert memori_instance.config.entity_id == "user-123"
         assert memori_instance.config.process_id == "process-456"
-
-
-# =============================================================================
-# Test Category 9: Storage Verification
-# =============================================================================
 
 
 class TestStorageVerification:

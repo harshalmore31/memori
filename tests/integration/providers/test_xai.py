@@ -29,11 +29,6 @@ TEST_PROMPT = "Say 'hello' in one word."  # Minimal prompt
 XAI_BASE_URL = "https://api.x.ai/v1"
 
 
-# =============================================================================
-# Test Category 1: Client Registration
-# =============================================================================
-
-
 class TestClientRegistration:
     """Tests for verifying client wrapping/registration works correctly."""
 
@@ -94,11 +89,6 @@ class TestClientRegistration:
         memori_instance.llm.register(client)
 
         assert hasattr(client.chat, "_completions_create")
-
-
-# =============================================================================
-# Test Category 2: Synchronous Chat Completions
-# =============================================================================
 
 
 class TestSyncChatCompletions:
@@ -178,11 +168,6 @@ class TestSyncChatCompletions:
         assert "alice" in content
 
 
-# =============================================================================
-# Test Category 3: Asynchronous Chat Completions
-# =============================================================================
-
-
 class TestAsyncChatCompletions:
     """Tests for asynchronous chat.completions.create() calls."""
 
@@ -248,11 +233,6 @@ class TestAsyncChatCompletions:
         assert response.choices[0].message.content is not None
 
 
-# =============================================================================
-# Test Category 4: Streaming Responses (Sync)
-# =============================================================================
-
-
 class TestSyncStreaming:
     """Tests for synchronous streaming responses."""
 
@@ -305,11 +285,6 @@ class TestSyncStreaming:
             assert hasattr(chunk, "choices")
             if chunk.choices:
                 assert hasattr(chunk.choices[0], "delta")
-
-
-# =============================================================================
-# Test Category 5: Async Streaming
-# =============================================================================
 
 
 class TestAsyncStreaming:
@@ -374,11 +349,6 @@ class TestAsyncStreaming:
         assert last_chunk is not None
 
 
-# =============================================================================
-# Test Category 6: Error Handling
-# =============================================================================
-
-
 class TestErrorHandling:
     """Tests for error handling scenarios."""
 
@@ -427,11 +397,6 @@ class TestErrorHandling:
                 messages=[{"role": "user", "content": TEST_PROMPT}],
                 max_tokens=MAX_TOKENS,
             )
-
-
-# =============================================================================
-# Test Category 7: Response Format Validation
-# =============================================================================
 
 
 class TestResponseFormatValidation:
@@ -500,11 +465,6 @@ class TestResponseFormatValidation:
         assert response.usage is not None
         assert response.usage.prompt_tokens > 0
         assert response.usage.completion_tokens > 0
-
-
-# =============================================================================
-# Test Category 8: Memori Integration Verification
-# =============================================================================
 
 
 class TestMemoriIntegration:
@@ -578,11 +538,6 @@ class TestMemoriIntegration:
         # Attribution should still be set
         assert memori_instance.config.entity_id == "user-123"
         assert memori_instance.config.process_id == "process-456"
-
-
-# =============================================================================
-# Test Category 9: Storage Verification
-# =============================================================================
 
 
 class TestStorageVerification:

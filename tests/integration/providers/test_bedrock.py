@@ -31,11 +31,6 @@ MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"  # Claude 3 Haiku on Bedrock
 TEST_PROMPT = "Say 'hello' in one word."  # Minimal prompt
 
 
-# =============================================================================
-# Test Category 1: Client Registration
-# =============================================================================
-
-
 class TestClientRegistration:
     """Tests for verifying client wrapping/registration works correctly."""
 
@@ -103,11 +98,6 @@ class TestClientRegistration:
         assert client._memori_installed is True
 
 
-# =============================================================================
-# Test Category 2: Synchronous Invocation
-# =============================================================================
-
-
 class TestSyncInvocation:
     """Tests for synchronous invoke() calls."""
 
@@ -167,11 +157,6 @@ class TestSyncInvocation:
         assert "alice" in content
 
 
-# =============================================================================
-# Test Category 3: Asynchronous Invocation
-# =============================================================================
-
-
 class TestAsyncInvocation:
     """Tests for asynchronous ainvoke() calls."""
 
@@ -216,11 +201,6 @@ class TestAsyncInvocation:
         assert len(response.content) > 0
 
 
-# =============================================================================
-# Test Category 4: Sync Streaming Responses
-# =============================================================================
-
-
 class TestSyncStreaming:
     """Tests for synchronous streaming responses."""
 
@@ -251,11 +231,6 @@ class TestSyncStreaming:
         for chunk in registered_bedrock_client.stream(TEST_PROMPT):
             # Each chunk should be a LangChain message type
             assert hasattr(chunk, "content")
-
-
-# =============================================================================
-# Test Category 5: Async Streaming Responses
-# =============================================================================
 
 
 class TestAsyncStreaming:
@@ -314,11 +289,6 @@ class TestAsyncStreaming:
             assert metadata is not None
 
 
-# =============================================================================
-# Test Category 6: Error Handling
-# =============================================================================
-
-
 class TestErrorHandling:
     """Tests for error handling scenarios."""
 
@@ -354,11 +324,6 @@ class TestErrorHandling:
 
         with pytest.raises((ValueError, RuntimeError, TypeError)):
             await client.ainvoke(TEST_PROMPT)
-
-
-# =============================================================================
-# Test Category 7: Response Format Validation
-# =============================================================================
 
 
 class TestResponseFormatValidation:
@@ -402,11 +367,6 @@ class TestResponseFormatValidation:
         response = await registered_bedrock_client.ainvoke(TEST_PROMPT)
 
         assert response.response_metadata is not None
-
-
-# =============================================================================
-# Test Category 8: Memori Integration Verification
-# =============================================================================
 
 
 class TestMemoriIntegration:
@@ -476,11 +436,6 @@ class TestMemoriIntegration:
         # Attribution should still be set
         assert memori_instance.config.entity_id == "user-123"
         assert memori_instance.config.process_id == "process-456"
-
-
-# =============================================================================
-# Test Category 9: Storage Verification
-# =============================================================================
 
 
 class TestStorageVerification:
