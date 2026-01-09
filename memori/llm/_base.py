@@ -80,11 +80,6 @@ class BaseClient:
 
         original = getattr(backup_obj, backup_attr)
 
-        # Detect async by checking:
-        # 1. If the original method is a coroutine function (works for some SDKs)
-        # 2. If the object class name starts with "Async" (e.g., AsyncCompletions, AsyncMessages)
-        # This is more reliable than checking asyncio.get_running_loop() which
-        # only reflects the context at registration time, not call time
         is_async = inspect.iscoroutinefunction(original) or type(
             obj
         ).__name__.startswith("Async")
