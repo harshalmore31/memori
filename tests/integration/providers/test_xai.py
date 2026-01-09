@@ -331,6 +331,24 @@ class TestAsyncStreaming:
     @requires_xai
     @pytest.mark.integration
     @pytest.mark.asyncio
+    async def test_async_streaming_chunk_structure(self, registered_async_xai_client):
+        """Verify async streaming chunks have expected structure."""
+        stream = await registered_async_xai_client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": TEST_PROMPT}],
+            max_tokens=MAX_TOKENS,
+            stream=True,
+        )
+
+        async for chunk in stream:
+            # Each chunk should have standard OpenAI-compatible structure
+            assert hasattr(chunk, "choices")
+            assert hasattr(chunk, "id")
+            assert hasattr(chunk, "model")
+
+    @requires_xai
+    @pytest.mark.integration
+    @pytest.mark.asyncio
     async def test_async_streaming_with_usage_info(self, registered_async_xai_client):
         """Verify async streaming includes usage when requested."""
         stream = await registered_async_xai_client.chat.completions.create(

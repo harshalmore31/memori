@@ -103,6 +103,11 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
 ]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::UserWarning:langsmith",
+]
 
 [tool.coverage.run]
 source = ["memori"]

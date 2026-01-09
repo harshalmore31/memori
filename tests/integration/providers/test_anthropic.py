@@ -308,6 +308,27 @@ class TestAsyncStreaming:
     @requires_anthropic
     @pytest.mark.integration
     @pytest.mark.asyncio
+    async def test_async_streaming_chunk_structure(
+        self, registered_async_anthropic_client
+    ):
+        """Verify async streaming events have expected structure."""
+        async with registered_async_anthropic_client.messages.stream(
+            model=MODEL,
+            messages=[{"role": "user", "content": TEST_PROMPT}],
+            max_tokens=MAX_TOKENS,
+        ) as stream:
+            async for _ in stream.text_stream:
+                pass
+            final_message = await stream.get_final_message()
+
+        # Verify message structure
+        assert hasattr(final_message, "id")
+        assert hasattr(final_message, "model")
+        assert hasattr(final_message, "content")
+
+    @requires_anthropic
+    @pytest.mark.integration
+    @pytest.mark.asyncio
     async def test_async_streaming_final_message(
         self, registered_async_anthropic_client
     ):

@@ -85,7 +85,7 @@ class TestSyncAAIntegration:
 
         chunks = []
         for chunk in stream:
-            if chunk.choices[0].delta.content:
+            if chunk.choices and chunk.choices[0].delta.content:
                 chunks.append(chunk.choices[0].delta.content)
 
         assert len(chunks) > 0
@@ -177,7 +177,7 @@ class TestAsyncAAIntegration:
 
         chunks = []
         async for chunk in stream:
-            if chunk.choices[0].delta.content:
+            if chunk.choices and chunk.choices[0].delta.content:
                 chunks.append(chunk.choices[0].delta.content)
 
         assert len(chunks) > 0

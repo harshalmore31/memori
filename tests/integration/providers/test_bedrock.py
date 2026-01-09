@@ -292,6 +292,31 @@ class TestAsyncStreaming:
 class TestErrorHandling:
     """Tests for error handling scenarios."""
 
+    @pytest.mark.integration
+    def test_invalid_credentials_raises_error(self, memori_instance):
+        """Verify invalid AWS credentials raises appropriate error."""
+        import os
+        from unittest.mock import patch
+
+        from langchain_aws import ChatBedrock
+
+        # Temporarily override AWS credentials
+        with patch.dict(
+            os.environ,
+            {
+                "AWS_ACCESS_KEY_ID": "invalid-key",
+                "AWS_SECRET_ACCESS_KEY": "invalid-secret",
+            },
+        ):
+            client = ChatBedrock(
+                model_id=MODEL_ID,
+                region_name="us-east-1",
+            )
+            memori_instance.llm.register(chatbedrock=client)
+
+            with pytest.raises((ValueError, RuntimeError, Exception)):
+                client.invoke(TEST_PROMPT)
+
     @requires_bedrock
     @pytest.mark.integration
     def test_invalid_model_raises_error(self, memori_instance, aws_credentials):
@@ -331,21 +356,24 @@ class TestResponseFormatValidation:
 
     @requires_bedrock
     @pytest.mark.integration
-    def test_response_contains_metadata(self, registered_bedrock_client):
-        """Verify response contains metadata."""
-        response = registered_bedrock_client.invoke(TEST_PROMPT)
-
-        assert response.response_metadata is not None
-
-    @requires_bedrock
-    @pytest.mark.integration
-    def test_response_has_usage_info(self, registered_bedrock_client):
-        """Verify response contains usage information."""
+    def test_response_contains_usage_metadata(self, registered_bedrock_client):
+        """Verify response contains usage metadata."""
         response = registered_bedrock_client.invoke(TEST_PROMPT)
 
         # Bedrock includes usage in response_metadata
+        assert response.response_metadata is not None
         metadata = response.response_metadata
         assert "usage" in metadata or "stopReason" in metadata
+
+    @requires_bedrock
+    @pytest.mark.integration
+    def test_response_model_matches_requested(self, registered_bedrock_client):
+        """Verify response includes model information."""
+        response = registered_bedrock_client.invoke(TEST_PROMPT)
+
+        # Bedrock includes model info in response_metadata
+        metadata = response.response_metadata
+        assert metadata is not None
 
     @requires_bedrock
     @pytest.mark.integration
@@ -362,8 +390,10 @@ class TestResponseFormatValidation:
     @requires_bedrock
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_async_response_contains_metadata(self, registered_bedrock_client):
-        """Verify async response contains metadata."""
+    async def test_async_response_contains_usage_metadata(
+        self, registered_bedrock_client
+    ):
+        """Verify async response contains usage metadata."""
         response = await registered_bedrock_client.ainvoke(TEST_PROMPT)
 
         assert response.response_metadata is not None

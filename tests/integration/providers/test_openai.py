@@ -329,6 +329,26 @@ class TestAsyncStreaming:
     @requires_openai
     @pytest.mark.integration
     @pytest.mark.asyncio
+    async def test_async_streaming_chunk_structure(
+        self, registered_async_streaming_client
+    ):
+        """Verify async streaming chunks have expected structure."""
+        stream = await registered_async_streaming_client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": TEST_PROMPT}],
+            max_tokens=MAX_TOKENS,
+            stream=True,
+        )
+
+        async for chunk in stream:
+            # Each chunk should have standard OpenAI structure
+            assert hasattr(chunk, "choices")
+            assert hasattr(chunk, "id")
+            assert hasattr(chunk, "model")
+
+    @requires_openai
+    @pytest.mark.integration
+    @pytest.mark.asyncio
     async def test_async_streaming_with_usage_info(
         self, registered_async_streaming_client
     ):

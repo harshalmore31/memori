@@ -2,8 +2,9 @@ name: Integration Tests
 
 on:
   push:
-    branches:
-      - integration-tests  # For testing - remove after merge
+    branches: [main]
+  pull_request:
+    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -26,6 +27,8 @@ jobs:
   integration-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Skip on forks (no secrets available) - tests would be skipped anyway
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       MEMORI_TEST_MODE: "1"
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
