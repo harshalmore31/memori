@@ -128,10 +128,9 @@ class BaseInvoke:
         if _seen is None:
             _seen = set()
 
-        # Check for circular references using object id
         obj_id = id(obj)
         if obj_id in _seen:
-            return None  # Break circular reference
+            return None
         _seen.add(obj_id)
 
         try:
@@ -143,16 +142,14 @@ class BaseInvoke:
                 return {
                     key: self._convert_to_json(value, _seen.copy())
                     for key, value in obj.items()
-                    if not key.startswith("_")  # Skip private/internal attributes
+                    if not key.startswith("_")
                 }
             elif hasattr(obj, "model_dump"):
-                # Pydantic models - use built-in serialization
                 try:
                     return obj.model_dump()
                 except Exception:
                     pass
             elif hasattr(obj, "__dict__"):
-                # Filter out private attributes and httpx/async internals
                 filtered_dict = {
                     k: v
                     for k, v in obj.__dict__.items()
@@ -245,48 +242,41 @@ class BaseInvoke:
 
         Falls back to alternative copy methods if deepcopy fails.
         """
-        # Try deepcopy first (works for most cases)
         try:
             return copy.deepcopy(obj)
         except (TypeError, AttributeError):
             pass
 
-        # For lists, try to copy each item individually
         if isinstance(obj, list):
             result = []
             for item in obj:
                 result.append(self._safe_copy(item))
             return result
 
-        # For dicts, try to copy each value
         if isinstance(obj, dict):
             result = {}
             for key, value in obj.items():
                 result[key] = self._safe_copy(value)
             return result
 
-        # For Pydantic models, use model_dump()
         if hasattr(obj, "model_dump"):
             try:
                 return obj.model_dump()
             except Exception:
                 pass
 
-        # For objects with to_dict() method
         if hasattr(obj, "to_dict"):
             try:
                 return obj.to_dict()
             except Exception:
                 pass
 
-        # For objects with __dict__, try shallow copy of attributes
         if hasattr(obj, "__dict__"):
             try:
                 return copy.copy(obj)
             except Exception:
                 pass
 
-        # Last resort: return as-is (primitives, or unpicklable objects)
         return obj
 
     def _format_response(self, raw_response):
